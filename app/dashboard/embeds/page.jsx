@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import ModulePanel from '@/components/modules/ModulePanel'
 import { Card, CardHeader, Field, Input, Textarea } from '@/components/ui/Card'
 import ChannelSelect from '@/components/ui/ChannelSelect'
@@ -8,6 +9,8 @@ import { Layers, Plus, Trash2, Send } from 'lucide-react'
 function EmbedBuilder({ data, setData }) {
   const embed = data.draft || {}
   const fields = embed.fields || []
+  const [sending, setSending] = useState(false)
+  const [sendStatus, setSendStatus] = useState(null)
 
   function update(field, value) {
     setData({ ...data, draft: { ...embed, [field]: value } })
@@ -26,11 +29,26 @@ function EmbedBuilder({ data, setData }) {
   }
 
   async function handleSend() {
-    await fetch('/api/bot/embeds', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'send', embed }),
-    })
+    setSending(true)
+    setSendStatus(null)
+    try {
+      const res = await fetch('/api/bot/embeds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send', embed }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSendStatus({ ok: false, msg: data.error || 'Failed to send' })
+      } else {
+        setSendStatus({ ok: true, msg: 'Embed sent!' })
+        setTimeout(() => setSendStatus(null), 3000)
+      }
+    } catch {
+      setSendStatus({ ok: false, msg: 'Network error' })
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -94,9 +112,19 @@ function EmbedBuilder({ data, setData }) {
                 {embed.authorName && <p className="text-xs text-text-muted mb-1">{embed.authorName}</p>}
                 {embed.title && <p className="font-semibold text-text text-sm mb-1">{embed.title}</p>}
                 {embed.description && <p className="text-sm text-text-dim whitespace-pre-wrap">{embed.description}</p>}
+                {fields.filter(f => f.name && f.value).length > 0 && (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {fields.filter(f => f.name && f.value).map((f, i) => (
+                      <div key={i} className="bg-bg-1 rounded p-2">
+                        <p className="text-[10px] text-text-muted uppercase font-semibold">{f.name}</p>
+                        <p className="text-sm text-text">{f.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {embed.footer && <p className="text-xs text-text-muted mt-3 pt-2 border-t border-border">{embed.footer}</p>}
               </div>
-              {embed.thumbnail && <img src={embed.thumbnail} alt="" className="w-16 h-16 rounded object-cover flex-shrink-0" onError={e => e.target.style.display='none'} />}
+              {embed.thumbnail && <img src={embed.thumbnail} alt="" className="w-16 h-16 rounded object-cover flex-shrink-0" onError={e => e.target.style.display = 'none'} />}
             </div>
           </div>
         </Card>
@@ -104,13 +132,22 @@ function EmbedBuilder({ data, setData }) {
 
       <Card>
         <CardHeader title="Send Embed" description="Send this embed to a channel immediately." />
-        <div className="flex items-end gap-3">
-          <Field label="Channel" className="flex-1">
+        <div className="space-y-3">
+          <Field label="Channel">
             <ChannelSelect value={embed.channelId || ''} onChange={v => update('channelId', v)} />
           </Field>
-          <button onClick={handleSend} disabled={!embed.channelId || (!embed.title && !embed.description)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-medium transition-all mb-0.5">
-            <Send size={13} /> Send
+          {sendStatus && (
+            <p className={`text-xs px-3 py-2 rounded-lg border ${sendStatus.ok ? 'text-success bg-success/10 border-success/20' : 'text-danger bg-danger/10 border-danger/20'}`}>
+              {sendStatus.msg}
+            </p>
+          )}
+          <button
+            onClick={handleSend}
+            disabled={sending || !embed.channelId || (!embed.title && !embed.description)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-medium transition-all"
+          >
+            <Send size={13} />
+            {sending ? 'Sending...' : 'Send Embed'}
           </button>
         </div>
       </Card>

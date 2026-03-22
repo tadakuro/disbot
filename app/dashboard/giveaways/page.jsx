@@ -1,25 +1,40 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardHeader, Field, Input, Select } from '@/components/ui/Card'
+import { Card, CardHeader, Field, Input } from '@/components/ui/Card'
 import ChannelSelect from '@/components/ui/ChannelSelect'
 import { Gift, Trophy } from 'lucide-react'
 
 function CreateGiveawayForm({ onCreated }) {
   const [form, setForm] = useState({ prize: '', channelId: '', duration: 60, winners: 1, requiredRole: '' })
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
+    setError(null)
     setLoading(true)
-    await fetch('/api/bot/giveaways', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, endsAt: new Date(Date.now() + form.duration * 60000) }),
-    })
-    setForm({ prize: '', channelId: '', duration: 60, winners: 1, requiredRole: '' })
-    setLoading(false)
-    if (onCreated) onCreated()
+    try {
+      const res = await fetch('/api/bot/giveaways', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          endsAt: new Date(Date.now() + form.duration * 60000),
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to create giveaway')
+      } else {
+        setForm({ prize: '', channelId: '', duration: 60, winners: 1, requiredRole: '' })
+        if (onCreated) onCreated()
+      }
+    } catch {
+      setError('Network error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -27,22 +42,25 @@ function CreateGiveawayForm({ onCreated }) {
       <CardHeader title="Create Giveaway" description="Start a new giveaway in any channel." />
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Prize">
-          <Input placeholder="What are you giving away?" value={form.prize} onChange={(e) => setForm({ ...form, prize: e.target.value })} />
+          <Input placeholder="What are you giving away?" value={form.prize} onChange={e => setForm({ ...form, prize: e.target.value })} />
         </Field>
-        <Field label="Channel ID">
-          <Input placeholder="Channel ID" value={form.channelId} onChange={(e) => setForm({ ...form, channelId: e.target.value })} />
+        <Field label="Channel">
+          <ChannelSelect value={form.channelId} onChange={v => setForm({ ...form, channelId: v })} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Duration (minutes)">
-            <Input type="number" min={1} value={form.duration} onChange={(e) => setForm({ ...form, duration: parseInt(e.target.value) || 60 })} />
+            <Input type="number" min={1} value={form.duration} onChange={e => setForm({ ...form, duration: parseInt(e.target.value) || 60 })} />
           </Field>
           <Field label="Winners">
-            <Input type="number" min={1} max={20} value={form.winners} onChange={(e) => setForm({ ...form, winners: parseInt(e.target.value) || 1 })} />
+            <Input type="number" min={1} max={20} value={form.winners} onChange={e => setForm({ ...form, winners: parseInt(e.target.value) || 1 })} />
           </Field>
         </div>
         <Field label="Required Role ID" hint="Leave empty — anyone can enter">
-          <Input placeholder="Role ID (optional)" value={form.requiredRole} onChange={(e) => setForm({ ...form, requiredRole: e.target.value })} />
+          <Input placeholder="Role ID (optional)" value={form.requiredRole} onChange={e => setForm({ ...form, requiredRole: e.target.value })} />
         </Field>
+        {error && (
+          <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>
+        )}
         <button type="submit" disabled={loading || !form.prize || !form.channelId}
           className="px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-medium transition-all shadow-glow-sm">
           {loading ? 'Creating...' : '🎉 Create Giveaway'}
@@ -57,22 +75,23 @@ export default function GiveawaysPage() {
   const [loading, setLoading] = useState(true)
 
   async function fetchGiveaways() {
-    const res = await fetch('/api/bot/giveaways')
-    const data = await res.json()
-    setGiveaways(Array.isArray(data) ? data : [])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/bot/giveaways')
+      const data = await res.json()
+      setGiveaways(Array.isArray(data) ? data : [])
+    } catch {
+      setGiveaways([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleAction(id, action) {
-    const res = await fetch('/api/bot/giveaways', {
+    await fetch('/api/bot/giveaways', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action }),
     })
-    const data = await res.json()
-    if (action === 'reroll' && data.winner) {
-      alert(`New winner: <@${data.winner}>`)
-    }
     fetchGiveaways()
   }
 
@@ -94,7 +113,6 @@ export default function GiveawaysPage() {
 
       <div className="space-y-4">
         <CreateGiveawayForm onCreated={fetchGiveaways} />
-
         <Card>
           <CardHeader title="All Giveaways" />
           {loading ? (
@@ -105,7 +123,7 @@ export default function GiveawaysPage() {
             <p className="text-sm text-text-muted text-center py-6">No giveaways yet.</p>
           ) : (
             <div className="space-y-2">
-              {giveaways.map((g) => (
+              {giveaways.map(g => (
                 <div key={g._id} className="flex items-center justify-between p-3.5 bg-bg-1 rounded-lg border border-border">
                   <div>
                     <div className="flex items-center gap-2">
@@ -114,7 +132,10 @@ export default function GiveawaysPage() {
                         {g.active ? 'Active' : 'Ended'}
                       </span>
                     </div>
-                    <p className="text-xs text-text-muted mt-0.5">{g.winners} winner(s) · Channel {g.channelId} · {g.entries?.length || 0} entries</p>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      {g.winners} winner(s) · {g.entries?.length || 0} entries
+                      {g.winner && ` · Winner: <@${g.winner}>`}
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     {g.active && (

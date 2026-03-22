@@ -1,20 +1,22 @@
+const MOD_COMMANDS = ['ban', 'kick', 'warn', 'timeout', 'purge']
+
 function init(client, db) {
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return
 
-    // Defer immediately before any async operations
+    // Skip mod commands — moderation.js handles those with its own defer
+    if (MOD_COMMANDS.includes(interaction.commandName)) return
+
+    // Defer immediately before any async work
     try {
       await interaction.deferReply()
     } catch {
-      return // Interaction already expired
+      return // Interaction expired
     }
 
     try {
       const cmd = await db.collection('commands').findOne({ name: interaction.commandName })
-      if (!cmd?.code) {
-        await interaction.editReply({ content: 'Command not found.' })
-        return
-      }
+      if (!cmd?.code) return // Not a custom command, skip silently
 
       const fn = new Function('module', 'require', `
         ${cmd.code}
@@ -23,6 +25,9 @@ function init(client, db) {
       const handler = fn({ exports: {} }, require)
       if (typeof handler === 'function') {
         await handler(interaction, client)
+      } else {
+        await interaction.editReply({ content: '❌ Command does not export a function. Check your code.' })
+        return
       }
 
       await db.collection('tracker').insertOne({
@@ -34,9 +39,9 @@ function init(client, db) {
       }).catch(() => {})
 
     } catch (err) {
-      console.error(`Error executing command /${interaction.commandName}:`, err.message)
+      console.error(`Error in command /${interaction.commandName}:`, err.message)
       try {
-        await interaction.editReply({ content: `Error: ${err.message}` })
+        await interaction.editReply({ content: '❌ An error occurred while running this command.' })
       } catch {}
     }
   })

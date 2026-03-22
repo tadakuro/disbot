@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardHeader, Field, Input } from '@/components/ui/Card'
+import ChannelSelect from '@/components/ui/ChannelSelect'
 import { Webhook, Plus, Trash2, Copy, Check, Send } from 'lucide-react'
 
 function WebhookCard({ hook, onDelete, onTest }) {
@@ -95,10 +96,15 @@ export default function WebhooksPage() {
 
   async function fetchWebhooks() {
     setLoading(true)
-    const res = await fetch('/api/bot/webhooks')
-    const data = await res.json()
-    setWebhooks(Array.isArray(data) ? data : [])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/bot/webhooks')
+      const data = await res.json()
+      setWebhooks(Array.isArray(data) ? data : [])
+    } catch {
+      setWebhooks([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleCreate(e) {
@@ -153,8 +159,8 @@ export default function WebhooksPage() {
               <Field label="Webhook Name">
                 <Input placeholder="e.g. Announcements" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </Field>
-              <Field label="Channel ID">
-                <Input placeholder="Channel ID" value={form.channelId} onChange={(e) => setForm({ ...form, channelId: e.target.value })} />
+              <Field label="Channel">
+                <ChannelSelect value={form.channelId} onChange={v => setForm({ ...form, channelId: v })} />
               </Field>
             </div>
             <Field label="Avatar URL" hint="Optional — leave empty to use the default Discord webhook avatar">

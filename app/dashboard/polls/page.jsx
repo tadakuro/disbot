@@ -8,6 +8,7 @@ import { BarChart2, Plus, Trash2 } from 'lucide-react'
 function CreatePollForm({ onCreated }) {
   const [form, setForm] = useState({ question: '', channelId: '', options: ['', ''], duration: 60, multiVote: false })
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   function updateOption(i, value) {
     const opts = [...form.options]
@@ -25,15 +26,35 @@ function CreatePollForm({ onCreated }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    setError(null)
+    const filledOptions = form.options.filter(o => o.trim())
+    if (filledOptions.length < 2) {
+      setError('At least 2 options are required')
+      return
+    }
     setLoading(true)
-    await fetch('/api/bot/polls', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, endsAt: new Date(Date.now() + form.duration * 60000) }),
-    })
-    setForm({ question: '', channelId: '', options: ['', ''], duration: 60, multiVote: false })
-    setLoading(false)
-    if (onCreated) onCreated()
+    try {
+      const res = await fetch('/api/bot/polls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          options: filledOptions,
+          endsAt: new Date(Date.now() + form.duration * 60000),
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to create poll')
+      } else {
+        setForm({ question: '', channelId: '', options: ['', ''], duration: 60, multiVote: false })
+        if (onCreated) onCreated()
+      }
+    } catch {
+      setError('Network error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -41,7 +62,7 @@ function CreatePollForm({ onCreated }) {
       <CardHeader title="Create Poll" description="Set up a new poll in any channel." />
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Question">
-          <Input placeholder="What do you think about...?" value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} />
+          <Input placeholder="What do you think about...?" value={form.question} onChange={e => setForm({ ...form, question: e.target.value })} />
         </Field>
         <Field label="Channel">
           <ChannelSelect value={form.channelId} onChange={v => setForm({ ...form, channelId: v })} />
@@ -52,7 +73,7 @@ function CreatePollForm({ onCreated }) {
             {form.options.map((opt, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span className="text-xs text-text-muted w-5 text-right flex-shrink-0">{i + 1}.</span>
-                <Input placeholder={`Option ${i + 1}`} value={opt} onChange={(e) => updateOption(i, e.target.value)} />
+                <Input placeholder={`Option ${i + 1}`} value={opt} onChange={e => updateOption(i, e.target.value)} />
                 {form.options.length > 2 && (
                   <button type="button" onClick={() => removeOption(i)} className="text-text-muted hover:text-danger transition-colors flex-shrink-0">
                     <Trash2 size={13} />
@@ -69,15 +90,18 @@ function CreatePollForm({ onCreated }) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Duration (minutes)">
-            <Input type="number" min={1} value={form.duration} onChange={(e) => setForm({ ...form, duration: parseInt(e.target.value) || 60 })} />
+            <Input type="number" min={1} value={form.duration} onChange={e => setForm({ ...form, duration: parseInt(e.target.value) || 60 })} />
           </Field>
           <Field label="Vote Type">
-            <Select value={form.multiVote ? 'multi' : 'single'} onChange={(e) => setForm({ ...form, multiVote: e.target.value === 'multi' })} className="w-full">
+            <Select value={form.multiVote ? 'multi' : 'single'} onChange={e => setForm({ ...form, multiVote: e.target.value === 'multi' })} className="w-full">
               <option value="single">Single choice</option>
               <option value="multi">Multiple choice</option>
             </Select>
           </Field>
         </div>
+        {error && (
+          <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>
+        )}
         <button type="submit" disabled={loading || !form.question || !form.channelId}
           className="px-4 py-2 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm font-medium transition-all">
           {loading ? 'Creating...' : 'Create Poll'}
@@ -92,14 +116,23 @@ export default function PollsPage() {
   const [loading, setLoading] = useState(true)
 
   async function fetchPolls() {
-    const res = await fetch('/api/bot/polls')
-    const data = await res.json()
-    setPolls(Array.isArray(data) ? data : [])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/bot/polls')
+      const data = await res.json()
+      setPolls(Array.isArray(data) ? data : [])
+    } catch {
+      setPolls([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function endPoll(id) {
-    await fetch('/api/bot/polls', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, action: 'end' }) })
+    await fetch('/api/bot/polls', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action: 'end' }),
+    })
     fetchPolls()
   }
 
@@ -128,11 +161,14 @@ export default function PollsPage() {
             <p className="text-sm text-text-muted text-center py-6">No polls yet.</p>
           ) : (
             <div className="space-y-2">
-              {polls.map((p) => (
+              {polls.map(p => (
                 <div key={p._id} className="flex items-center justify-between p-3 bg-bg-1 rounded-lg border border-border">
                   <div>
                     <p className="text-sm font-medium text-text">{p.question}</p>
-                    <p className="text-xs text-text-muted mt-0.5">{p.options?.length} options · {p.active ? 'Active' : 'Ended'} · Channel {p.channelId}</p>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      {p.options?.length} options · {Object.keys(p.votes || {}).length} votes ·{' '}
+                      <span className={p.active ? 'text-success' : 'text-text-muted'}>{p.active ? 'Active' : 'Ended'}</span>
+                    </p>
                   </div>
                   {p.active && (
                     <button onClick={() => endPoll(p._id)} className="text-xs px-3 py-1.5 rounded-lg bg-danger/10 text-danger hover:bg-danger/20 border border-danger/20 transition-all">

@@ -11,8 +11,10 @@ export default function BotOverviewCard({ bot }) {
     ? `https://cdn.discordapp.com/avatars/${bot.id}/${bot.avatar}.png`
     : null
 
-  const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_SERVICE_URL ||
-    `https://railway.com/project/${process.env.NEXT_PUBLIC_RAILWAY_PROJECT_ID}`
+  const railwayProjectId = process.env.NEXT_PUBLIC_RAILWAY_PROJECT_ID
+  const railwayUrl = railwayProjectId
+    ? `https://railway.com/project/${railwayProjectId}`
+    : 'https://railway.com'
 
   async function fetchStatus() {
     try {
@@ -60,7 +62,7 @@ export default function BotOverviewCard({ bot }) {
       </div>
 
       <a
-        href={`https://railway.com/project/${process.env.NEXT_PUBLIC_RAILWAY_PROJECT_ID}`}
+        href={railwayUrl}
         target="_blank"
         rel="noreferrer"
         className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-bg-3 hover:bg-bg-4 border border-border text-text-muted hover:text-text text-xs font-medium transition-all"

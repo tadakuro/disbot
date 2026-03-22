@@ -2,6 +2,7 @@
 
 import ModulePanel from '@/components/modules/ModulePanel'
 import { Card, CardHeader, Field, Input, Select } from '@/components/ui/Card'
+import ChannelSelect from '@/components/ui/ChannelSelect'
 import { Star, Plus, Trash2 } from 'lucide-react'
 
 function ReactionRolesList({ data, setData }) {
@@ -30,30 +31,27 @@ function ReactionRolesList({ data, setData }) {
           <div key={i} className="p-4 bg-bg-1 rounded-lg border border-border space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-text-dim uppercase tracking-wider">Rule #{i + 1}</p>
-              <button
-                onClick={() => removeRule(i)}
-                className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-all"
-              >
+              <button onClick={() => removeRule(i)} className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-all">
                 <Trash2 size={13} />
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Emoji">
-                <Input placeholder="🎉 or custom emoji ID" value={rule.emoji} onChange={(e) => updateRule(i, 'emoji', e.target.value)} />
+                <Input placeholder="🎉 or :customemoji:" value={rule.emoji} onChange={e => updateRule(i, 'emoji', e.target.value)} />
               </Field>
               <Field label="Role ID">
-                <Input placeholder="Role ID" value={rule.roleId} onChange={(e) => updateRule(i, 'roleId', e.target.value)} />
+                <Input placeholder="Role ID" value={rule.roleId} onChange={e => updateRule(i, 'roleId', e.target.value)} />
               </Field>
-              <Field label="Message ID">
-                <Input placeholder="Message ID" value={rule.messageId} onChange={(e) => updateRule(i, 'messageId', e.target.value)} />
+              <Field label="Message ID" hint="Right-click message → Copy ID">
+                <Input placeholder="Message ID" value={rule.messageId} onChange={e => updateRule(i, 'messageId', e.target.value)} />
               </Field>
-              <Field label="Channel ID">
-                <Input placeholder="Channel ID" value={rule.channelId} onChange={(e) => updateRule(i, 'channelId', e.target.value)} />
+              <Field label="Channel">
+                <ChannelSelect value={rule.channelId} onChange={v => updateRule(i, 'channelId', v)} />
               </Field>
             </div>
             <Field label="Mode">
-              <Select value={rule.mode || 'toggle'} onChange={(e) => updateRule(i, 'mode', e.target.value)} className="w-full">
-                <option value="toggle">Toggle (add/remove on react/unreact)</option>
+              <Select value={rule.mode || 'toggle'} onChange={e => updateRule(i, 'mode', e.target.value)} className="w-full">
+                <option value="toggle">Toggle (add on react, remove on unreact)</option>
                 <option value="add">Add only (never remove)</option>
                 <option value="remove">Remove only</option>
               </Select>
@@ -61,12 +59,9 @@ function ReactionRolesList({ data, setData }) {
           </div>
         ))}
       </div>
-      <button
-        onClick={addRule}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border-bright text-text-muted hover:text-accent hover:border-accent/40 text-sm transition-all w-full justify-center"
-      >
-        <Plus size={14} />
-        Add Rule
+      <button onClick={addRule}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border-bright text-text-muted hover:text-accent hover:border-accent/40 text-sm transition-all w-full justify-center">
+        <Plus size={14} /> Add Rule
       </button>
     </Card>
   )
@@ -74,12 +69,7 @@ function ReactionRolesList({ data, setData }) {
 
 export default function ReactionRolesPage() {
   return (
-    <ModulePanel
-      title="Reaction Roles"
-      description="Assign roles to members when they react to a message with a specific emoji."
-      icon={Star}
-      apiPath="reaction-roles"
-    >
+    <ModulePanel title="Reaction Roles" description="Assign roles to members when they react to a message with a specific emoji." icon={Star} apiPath="reaction-roles">
       {({ data, setData }) => <ReactionRolesList data={data} setData={setData} />}
     </ModulePanel>
   )

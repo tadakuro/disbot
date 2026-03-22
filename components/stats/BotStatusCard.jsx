@@ -22,27 +22,33 @@ const ACTIVITY_TYPES = [
 export default function BotStatusCard() {
   const [status, setStatus] = useState({ presence: 'online', activityType: 'PLAYING', activityText: '', streamUrl: '' })
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [saveStatus, setSaveStatus] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/bot/status')
       .then(r => r.json())
       .then(d => { const { _id, key, updatedAt, ...rest } = d; setStatus(rest) })
+      .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
   async function handleSave() {
     setSaving(true)
-    setSaved(false)
-    await fetch('/api/bot/status', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(status),
-    })
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setSaveStatus(null)
+    try {
+      const res = await fetch('/api/bot/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(status),
+      })
+      setSaveStatus(res.ok ? 'saved' : 'error')
+    } catch {
+      setSaveStatus('error')
+    } finally {
+      setSaving(false)
+      setTimeout(() => setSaveStatus(null), 2500)
+    }
   }
 
   const currentPresence = PRESENCE_OPTIONS.find(p => p.value === status.presence) || PRESENCE_OPTIONS[0]
@@ -54,14 +60,18 @@ export default function BotStatusCard() {
           <Activity size={14} className="text-text-muted" />
           <p className="text-xs font-semibold text-text-muted uppercase tracking-widest">Bot Status</p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saving || loading}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent-muted text-accent hover:bg-accent/20 border border-accent/20 disabled:opacity-50 text-xs font-medium transition-all"
-        >
-          <Save size={11} />
-          {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save'}
-        </button>
+        <div className="flex items-center gap-2">
+          {saveStatus === 'saved' && <span className="text-xs text-success">Saved ✓</span>}
+          {saveStatus === 'error' && <span className="text-xs text-danger">Save failed</span>}
+          <button
+            onClick={handleSave}
+            disabled={saving || loading}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-accent-muted text-accent hover:bg-accent/20 border border-accent/20 disabled:opacity-50 text-xs font-medium transition-all"
+          >
+            <Save size={11} />
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -70,7 +80,6 @@ export default function BotStatusCard() {
         </div>
       ) : (
         <div className="space-y-3">
-          {/* Presence selector */}
           <div>
             <label className="block text-xs font-medium text-text-dim mb-1.5">Presence</label>
             <div className="grid grid-cols-2 gap-1.5">
@@ -91,12 +100,11 @@ export default function BotStatusCard() {
             </div>
           </div>
 
-          {/* Activity type */}
           <div>
             <label className="block text-xs font-medium text-text-dim mb-1.5">Activity Type</label>
             <select
               value={status.activityType}
-              onChange={(e) => setStatus({ ...status, activityType: e.target.value, streamUrl: e.target.value !== 'STREAMING' ? '' : status.streamUrl })}
+              onChange={e => setStatus({ ...status, activityType: e.target.value, streamUrl: e.target.value !== 'STREAMING' ? '' : status.streamUrl })}
               className="w-full px-3 py-2 rounded-lg bg-bg-1 border border-border text-text focus:outline-none focus:border-accent text-xs transition-all"
             >
               {ACTIVITY_TYPES.map(t => (
@@ -105,7 +113,6 @@ export default function BotStatusCard() {
             </select>
           </div>
 
-          {/* Activity text */}
           <div>
             <label className="block text-xs font-medium text-text-dim mb-1.5">
               {status.activityType === 'STREAMING' ? 'Stream Title' : 'Activity Text'}
@@ -121,12 +128,11 @@ export default function BotStatusCard() {
                 'your status here'
               }
               value={status.activityText || ''}
-              onChange={(e) => setStatus({ ...status, activityText: e.target.value })}
+              onChange={e => setStatus({ ...status, activityText: e.target.value })}
               className="w-full px-3 py-2 rounded-lg bg-bg-1 border border-border text-text placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 text-xs transition-all"
             />
           </div>
 
-          {/* Stream URL — only shown for STREAMING */}
           {status.activityType === 'STREAMING' && (
             <div>
               <label className="block text-xs font-medium text-text-dim mb-1.5">Stream URL</label>
@@ -134,14 +140,13 @@ export default function BotStatusCard() {
                 type="text"
                 placeholder="https://twitch.tv/yourchannel"
                 value={status.streamUrl || ''}
-                onChange={(e) => setStatus({ ...status, streamUrl: e.target.value })}
+                onChange={e => setStatus({ ...status, streamUrl: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg bg-bg-1 border border-border text-text placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 text-xs transition-all"
               />
               <p className="text-xs text-text-muted mt-1">Twitch or YouTube URL. Shows purple LIVE badge on bot.</p>
             </div>
           )}
 
-          {/* Preview */}
           {status.activityText && (
             <div className="flex items-center gap-2 px-3 py-2 bg-bg-1 rounded-lg border border-border">
               <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${currentPresence.color}`} />
