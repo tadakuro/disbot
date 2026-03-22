@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardHeader, Field, Input, Textarea, Select } from '@/components/ui/Card'
+import ChannelSelect from '@/components/ui/ChannelSelect'
 import { Clock, Plus, Trash2 } from 'lucide-react'
 
 function CreateScheduleForm({ onCreated }) {
