@@ -6,6 +6,8 @@ const logging = require('./modules/logging')
 const autoRoles = require('./modules/autoRoles')
 const commands = require('./modules/commands')
 const giveaways = require('./modules/giveaways')
+const polls = require('./modules/polls')
+const scheduledMessages = require('./modules/scheduledMessages')
 const tracker = require('./modules/tracker')
 
 async function load(client, db) {
@@ -24,6 +26,8 @@ async function load(client, db) {
 
   commands.init(client, db)
   giveaways.init(client, db)
+  polls.init(client, db)
+  scheduledMessages.init(client, db)
 
   console.log('Modules loaded.')
 }

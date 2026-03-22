@@ -1,36 +1,41 @@
 function init(client, db) {
-  client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.guild) return
+  client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isChatInputCommand()) return
 
-    const commands = await db.collection('commands').find({}).toArray()
-    if (!commands.length) return
+    const cmd = await db.collection('commands').findOne({ name: interaction.commandName })
+    if (!cmd?.code) return
 
-    for (const cmd of commands) {
-      const nodes = cmd.nodes || []
-      const edges = cmd.edges || []
+    try {
+      await interaction.deferReply()
 
-      const trigger = nodes.find((n) => n.type === 'trigger')
-      if (!trigger?.data?.command) continue
-
-      const prefix = trigger.data.command
-      if (!message.content.startsWith(prefix)) continue
-
-      const actionEdge = edges.find((e) => e.source === trigger.id)
-      if (!actionEdge) continue
-
-      const actionNode = nodes.find((n) => n.id === actionEdge.target)
-      if (!actionNode) continue
-
-      if (actionNode.type === 'action' && actionNode.data?.message) {
-        await message.channel.send(actionNode.data.message)
-        await db.collection('tracker').insertOne({
-          type: 'command', command: prefix,
-          userId: message.author.id,
-          guildId: message.guild.id,
-          at: new Date(),
-        })
+      const fn = new Function('module', 'require', `
+        ${cmd.code}
+        return module.exports
+      `)
+      const handler = fn({ exports: {} }, require)
+      if (typeof handler === 'function') {
+        await handler(interaction, client)
       }
+    } catch (err) {
+      console.error(`Error executing command /${cmd.name}:`, err.message)
+      try {
+        if (interaction.deferred) {
+          await interaction.editReply({ content: 'An error occurred running this command.' })
+        } else {
+          await interaction.reply({ content: 'An error occurred running this command.', ephemeral: true })
+        }
+      } catch {}
     }
+
+    try {
+      await db.collection('tracker').insertOne({
+        type: 'command',
+        command: `/${cmd.name}`,
+        userId: interaction.user.id,
+        guildId: interaction.guild?.id,
+        at: new Date(),
+      })
+    } catch {}
   })
 }
 

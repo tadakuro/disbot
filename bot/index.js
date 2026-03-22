@@ -94,6 +94,26 @@ async function main() {
 
     await registerCommands(config.token, client.user.id, db)
 
+    // Apply saved bot status
+    try {
+      const savedStatus = await db.collection('config').findOne({ key: 'botstatus' })
+      if (savedStatus?.activityText) {
+        const activityTypes = { PLAYING: 0, STREAMING: 1, LISTENING: 2, WATCHING: 3, COMPETING: 5, CUSTOM: 4 }
+        const type = activityTypes[savedStatus.activityType] ?? 0
+        const activity = { name: savedStatus.activityText, type }
+        if (savedStatus.activityType === 'STREAMING' && savedStatus.streamUrl) {
+          activity.url = savedStatus.streamUrl
+        }
+        client.user.setPresence({
+          status: savedStatus.presence || 'online',
+          activities: [activity],
+        })
+        console.log(`Status set: ${savedStatus.activityType} ${savedStatus.activityText}`)
+      }
+    } catch (err) {
+      console.error('Failed to set status:', err.message)
+    }
+
     await db.collection('config').updateOne(
       { key: 'uptime' },
       { $set: { key: 'uptime', since: new Date() } },
