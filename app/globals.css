@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #0e0e12;
+  color: #e8e8f0;
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #16161c; }
+::-webkit-scrollbar-thumb { background: #2e2e3a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #5865f2; }
+
+.react-flow__background { background-color: #0e0e12 !important; }
+.react-flow__edge-path { stroke: #5865f2 !important; stroke-width: 2 !important; }
+.react-flow__handle {
+  background: #5865f2 !important;
+  border: 2px solid #1e1e26 !important;
+  width: 10px !important;
+  height: 10px !important;
+}
