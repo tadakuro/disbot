@@ -1,3 +1,5 @@
+'use client'
+
 import ModulePanel from '@/components/modules/ModulePanel'
 
 const LOG_EVENTS = [
