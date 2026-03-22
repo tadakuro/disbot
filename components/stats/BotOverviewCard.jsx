@@ -2,11 +2,13 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { RotateCw, Square, Power } from 'lucide-react'
+import { RotateCw, Square, Power, AlertCircle } from 'lucide-react'
 
 export default function BotOverviewCard({ bot }) {
   const [status, setStatus] = useState(null)
   const [actionLoading, setActionLoading] = useState(null)
+  const [actionError, setActionError] = useState(null)
+  const [actionSuccess, setActionSuccess] = useState(null)
 
   const avatarUrl = bot?.avatar
     ? `https://cdn.discordapp.com/avatars/${bot.id}/${bot.avatar}.png`
@@ -24,15 +26,27 @@ export default function BotOverviewCard({ bot }) {
 
   async function handleAction(action) {
     setActionLoading(action)
+    setActionError(null)
+    setActionSuccess(null)
     try {
-      await fetch('/api/bot/control', {
+      const res = await fetch('/api/bot/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
       })
-      setTimeout(fetchStatus, 3000)
-    } catch {}
-    finally { setActionLoading(null) }
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setActionError(data.error || 'Action failed')
+      } else {
+        setActionSuccess(`${action.charAt(0).toUpperCase() + action.slice(1)} triggered`)
+        setTimeout(() => setActionSuccess(null), 3000)
+        setTimeout(fetchStatus, 4000)
+      }
+    } catch (err) {
+      setActionError('Network error — try again')
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   useEffect(() => { fetchStatus() }, [])
@@ -44,13 +58,16 @@ export default function BotOverviewCard({ bot }) {
     <div className="bg-bg-2 border border-border rounded-xl p-5 shadow-card col-span-2">
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs font-semibold text-text-muted uppercase tracking-widest">Bot Status</p>
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-          status === null ? 'bg-bg-3 text-text-muted' :
-          isOnline ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${status === null ? 'bg-text-muted' : isOnline ? 'bg-success animate-pulse-dot' : 'bg-danger'}`} />
-          {statusLabel}
-        </span>
+        <div className="flex items-center gap-2">
+          <button onClick={fetchStatus} className="text-xs text-text-muted hover:text-accent transition-colors">Refresh</button>
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+            status === null ? 'bg-bg-3 text-text-muted' :
+            isOnline ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${status === null ? 'bg-text-muted' : isOnline ? 'bg-success animate-pulse-dot' : 'bg-danger'}`} />
+            {statusLabel}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center gap-4 mb-5">
@@ -67,7 +84,7 @@ export default function BotOverviewCard({ bot }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2 mb-3">
         {[
           { action: 'restart', label: 'Restart', icon: RotateCw, color: 'accent' },
           { action: 'stop', label: 'Stop', icon: Square, color: 'danger' },
@@ -88,6 +105,19 @@ export default function BotOverviewCard({ bot }) {
           </button>
         ))}
       </div>
+
+      {actionError && (
+        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-danger/10 border border-danger/20">
+          <AlertCircle size={13} className="text-danger flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-danger">{actionError}</p>
+        </div>
+      )}
+
+      {actionSuccess && (
+        <div className="px-3 py-2 rounded-lg bg-success/10 border border-success/20">
+          <p className="text-xs text-success">✓ {actionSuccess} — status will update shortly</p>
+        </div>
+      )}
     </div>
   )
 }
