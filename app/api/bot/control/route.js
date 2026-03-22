@@ -19,7 +19,7 @@ async function railwayQuery(query, variables = {}) {
 
   const data = await res.json()
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${JSON.stringify(data)}`)
-  if (data.errors) throw new Error(`Railway error: ${JSON.stringify(data.errors)}`)
+  if (data.errors) throw new Error(data.errors[0]?.message || JSON.stringify(data.errors))
   return data
 }
 
@@ -41,6 +41,7 @@ export async function POST(request) {
 
   try {
     if (action === 'restart' || action === 'start') {
+      // Redeploy the service
       await railwayQuery(
         `mutation serviceInstanceRedeploy($environmentId: String!, $serviceId: String!) {
           serviceInstanceRedeploy(environmentId: $environmentId, serviceId: $serviceId)
@@ -48,21 +49,16 @@ export async function POST(request) {
         { environmentId, serviceId }
       )
     } else if (action === 'stop') {
-      // First get latest deployment id then stop it
-      const projectId = process.env.RAILWAY_PROJECT_ID
-      const data = await railwayQuery(
-        `query deployments($projectId: String!, $environmentId: String!, $serviceId: String!) {
-          deployments(first: 1, input: { projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId }) {
-            edges { node { id } }
-          }
-        }`,
-        { projectId, environmentId, serviceId }
-      )
-      const deploymentId = data?.data?.deployments?.edges?.[0]?.node?.id
-      if (!deploymentId) throw new Error('No active deployment found to stop')
+      // Set numReplicas to 0 to effectively stop the service
       await railwayQuery(
-        `mutation deploymentStop($id: String!) { deploymentStop(id: $id) }`,
-        { id: deploymentId }
+        `mutation serviceInstanceUpdate($environmentId: String!, $serviceId: String!) {
+          serviceInstanceUpdate(
+            environmentId: $environmentId
+            serviceId: $serviceId
+            input: { numReplicas: 0 }
+          )
+        }`,
+        { environmentId, serviceId }
       )
     }
 
