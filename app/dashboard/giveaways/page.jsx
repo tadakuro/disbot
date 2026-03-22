@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardHeader, Field, Input, Select } from '@/components/ui/Card'
+import ChannelSelect from '@/components/ui/ChannelSelect'
 import { Gift, Trophy } from 'lucide-react'
 
 function CreateGiveawayForm({ onCreated }) {
