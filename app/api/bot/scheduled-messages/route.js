@@ -7,7 +7,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const db = await getDb()
   const messages = await db.collection('scheduled_messages').find({}).sort({ scheduledAt: 1 }).toArray()
-  return NextResponse.json(messages)
+  return NextResponse.json(messages.map(m => ({ ...m, _id: m._id.toString() })))
 }
 
 export async function POST(request) {
@@ -24,7 +24,7 @@ export async function POST(request) {
     sent: false,
     createdAt: new Date(),
   })
-  return NextResponse.json({ success: true, id: result.insertedId })
+  return NextResponse.json({ success: true, id: result.insertedId.toString() })
 }
 
 export async function DELETE(request) {
