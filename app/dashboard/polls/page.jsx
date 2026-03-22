@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardHeader, Field, Input, Select } from '@/components/ui/Card'
+import ChannelSelect from '@/components/ui/ChannelSelect'
 import { BarChart2, Plus, Trash2 } from 'lucide-react'
 
 function CreatePollForm({ onCreated }) {
@@ -42,8 +43,8 @@ function CreatePollForm({ onCreated }) {
         <Field label="Question">
           <Input placeholder="What do you think about...?" value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} />
         </Field>
-        <Field label="Channel ID">
-          <Input placeholder="Channel ID" value={form.channelId} onChange={(e) => setForm({ ...form, channelId: e.target.value })} />
+        <Field label="Channel">
+          <ChannelSelect value={form.channelId} onChange={v => setForm({ ...form, channelId: v })} />
         </Field>
         <div>
           <label className="block text-xs font-medium text-text-dim mb-2">Options</label>
