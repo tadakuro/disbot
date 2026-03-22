@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Save, Power } from 'lucide-react'
 
-export default function ModulePanel({ title, description, apiPath, children, onDataLoad }) {
+export default function ModulePanel({ title, description, icon: Icon, apiPath, children }) {
   const [enabled, setEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -13,67 +14,90 @@ export default function ModulePanel({ title, description, apiPath, children, onD
     fetch(`/api/bot/${apiPath}`)
       .then((r) => r.json())
       .then((d) => {
-        setEnabled(d.enabled || false)
-        setData(d)
-        if (onDataLoad) onDataLoad(d, setData)
+        const { _id, key, updatedAt, ...rest } = d
+        setEnabled(rest.enabled || false)
+        setData(rest)
       })
+      .catch(() => {})
       .finally(() => setLoading(false))
-  }, [apiPath, onDataLoad])
+  }, [apiPath])
 
-  async function handleSave(extra = {}) {
+  async function handleSave() {
     setSaving(true)
     setSaved(false)
+    const { _id, key, updatedAt, ...cleanData } = data
     await fetch(`/api/bot/${apiPath}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...data, enabled, ...extra }),
+      body: JSON.stringify({ ...cleanData, enabled }),
     })
     setSaving(false)
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setTimeout(() => setSaved(false), 2500)
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-2 border-[#5865f2] border-t-transparent rounded-full animate-spin" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-text-muted">Loading module...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-xl font-semibold text-[#e8e8f0]">{title}</h1>
-          <p className="text-sm text-[#9999b0] mt-1">{description}</p>
+    <div className="animate-fadeIn">
+      {/* Module Header */}
+      <div className="flex items-start justify-between mb-6 pb-6 border-b border-border">
+        <div className="flex items-start gap-3">
+          {Icon && (
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${enabled ? 'bg-accent-muted border border-accent/20' : 'bg-bg-3 border border-border'}`}>
+              <Icon size={18} className={enabled ? 'text-accent' : 'text-text-muted'} />
+            </div>
+          )}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold text-text">{title}</h1>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                enabled ? 'bg-success/10 text-success border border-success/20' : 'bg-bg-3 text-text-muted border border-border'
+              }`}>
+                <span className={`w-1 h-1 rounded-full ${enabled ? 'bg-success animate-pulse-dot' : 'bg-text-muted'}`} />
+                {enabled ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <p className="text-sm text-text-muted mt-0.5">{description}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
-            onClick={() => setEnabled(!enabled)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-[#5865f2]' : 'bg-[#2e2e3a]'}`}
+            onClick={() => setEnabled((v) => !v)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              enabled
+                ? 'bg-success/10 text-success border border-success/20 hover:bg-success/20'
+                : 'bg-bg-3 text-text-muted border border-border hover:text-text hover:bg-bg-4'
+            }`}
           >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0'}`}
-            />
+            <Power size={13} />
+            {enabled ? 'Enabled' : 'Disabled'}
           </button>
-          <span className="text-sm text-[#9999b0]">{enabled ? 'Enabled' : 'Disabled'}</span>
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium bg-accent hover:bg-accent-hover disabled:opacity-50 text-white transition-all shadow-glow-sm"
+          >
+            <Save size={13} />
+            {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save'}
+          </button>
         </div>
       </div>
 
+      {/* Module Content */}
       <div className="space-y-4">
         {typeof children === 'function' ? children({ data, setData, enabled }) : children}
-      </div>
-
-      <div className="mt-8 flex items-center gap-3">
-        <button
-          onClick={() => handleSave()}
-          disabled={saving}
-          className="px-5 py-2.5 rounded-xl bg-[#5865f2] hover:bg-[#4752c4] disabled:opacity-50 text-white font-medium text-sm transition-colors"
-        >
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
-        {saved && <span className="text-sm text-[#3ba55d]">Saved!</span>}
       </div>
     </div>
   )

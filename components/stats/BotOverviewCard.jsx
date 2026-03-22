@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import { Power, RotateCw, Square } from 'lucide-react'
 
 export default function BotOverviewCard({ bot }) {
   const [status, setStatus] = useState(null)
@@ -17,7 +18,7 @@ export default function BotOverviewCard({ bot }) {
       const data = await res.json()
       setStatus(data)
     } catch {
-      setStatus({ online: false, status: 'UNKNOWN' })
+      setStatus({ online: false })
     }
   }
 
@@ -37,57 +38,55 @@ export default function BotOverviewCard({ bot }) {
   useEffect(() => { fetchStatus() }, [])
 
   const isOnline = status?.online
-  const statusLabel = status === null
-    ? 'Checking...'
-    : isOnline ? 'Online' : 'Offline'
-  const statusColor = status === null
-    ? 'bg-[#6b6b80]'
-    : isOnline ? 'bg-[#3ba55d]' : 'bg-[#ed4245]'
+  const statusLabel = status === null ? 'Checking...' : isOnline ? 'Online' : 'Offline'
 
   return (
-    <div className="bg-[#16161c] border border-[#2e2e3a] rounded-2xl p-5">
-      <p className="text-xs text-[#6b6b80] uppercase tracking-widest mb-4 font-medium">Bot</p>
+    <div className="bg-bg-2 border border-border rounded-xl p-5 shadow-card col-span-2">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs font-semibold text-text-muted uppercase tracking-widest">Bot Status</p>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+          status === null ? 'bg-bg-3 text-text-muted' :
+          isOnline ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${status === null ? 'bg-text-muted' : isOnline ? 'bg-success animate-pulse-dot' : 'bg-danger'}`} />
+          {statusLabel}
+        </span>
+      </div>
+
       <div className="flex items-center gap-4 mb-5">
-        <div className="w-12 h-12 rounded-full bg-[#5865f2] flex items-center justify-center overflow-hidden flex-shrink-0">
+        <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center overflow-hidden flex-shrink-0 shadow-glow-sm">
           {avatarUrl ? (
-            <Image src={avatarUrl} alt="Bot avatar" width={48} height={48} className="rounded-full" />
+            <Image src={avatarUrl} alt="Bot avatar" width={56} height={56} className="rounded-2xl" />
           ) : (
-            <span className="text-white font-bold text-lg">
-              {bot?.username?.[0]?.toUpperCase() || 'B'}
-            </span>
+            <span className="text-white font-bold text-2xl">{bot?.username?.[0]?.toUpperCase() || 'B'}</span>
           )}
         </div>
         <div>
-          <p className="font-semibold text-[#e8e8f0]">{bot?.username || 'Unknown'}</p>
-          <div className="flex items-center gap-1.5 mt-1">
-            <span className={`w-2 h-2 rounded-full ${statusColor}`} />
-            <span className="text-xs text-[#9999b0]">{statusLabel}</span>
-          </div>
+          <p className="font-semibold text-text text-base">{bot?.username || 'Unknown Bot'}</p>
+          <p className="text-xs text-text-muted mt-0.5 font-mono">ID: {bot?.id || '—'}</p>
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <button
-          onClick={() => handleAction('start')}
-          disabled={actionLoading !== null}
-          className="flex-1 py-2 rounded-lg bg-[#3ba55d20] text-[#3ba55d] hover:bg-[#3ba55d40] disabled:opacity-50 text-xs font-medium transition-colors"
-        >
-          {actionLoading === 'start' ? '...' : 'Start'}
-        </button>
-        <button
-          onClick={() => handleAction('restart')}
-          disabled={actionLoading !== null}
-          className="flex-1 py-2 rounded-lg bg-[#5865f220] text-[#5865f2] hover:bg-[#5865f240] disabled:opacity-50 text-xs font-medium transition-colors"
-        >
-          {actionLoading === 'restart' ? '...' : 'Restart'}
-        </button>
-        <button
-          onClick={() => handleAction('stop')}
-          disabled={actionLoading !== null}
-          className="flex-1 py-2 rounded-lg bg-[#ed424520] text-[#ed4245] hover:bg-[#ed424540] disabled:opacity-50 text-xs font-medium transition-colors"
-        >
-          {actionLoading === 'stop' ? '...' : 'Stop'}
-        </button>
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { action: 'start', label: 'Start', icon: Power, color: 'success' },
+          { action: 'restart', label: 'Restart', icon: RotateCw, color: 'accent' },
+          { action: 'stop', label: 'Stop', icon: Square, color: 'danger' },
+        ].map(({ action, label, icon: Icon, color }) => (
+          <button
+            key={action}
+            onClick={() => handleAction(action)}
+            disabled={actionLoading !== null}
+            className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-50 ${
+              color === 'success' ? 'bg-success/10 text-success hover:bg-success/20 border border-success/20' :
+              color === 'danger' ? 'bg-danger/10 text-danger hover:bg-danger/20 border border-danger/20' :
+              'bg-accent-muted text-accent hover:bg-accent/20 border border-accent/20'
+            }`}
+          >
+            <Icon size={12} className={actionLoading === action ? 'animate-spin' : ''} />
+            {actionLoading === action ? '...' : label}
+          </button>
+        ))}
       </div>
     </div>
   )

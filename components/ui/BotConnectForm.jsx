@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Link2 } from 'lucide-react'
 
 export default function BotConnectForm({ onConnected }) {
   const [token, setToken] = useState('')
@@ -32,40 +33,52 @@ export default function BotConnectForm({ onConnected }) {
   }
 
   return (
-    <div className="max-w-md">
-      <div className="bg-[#16161c] border border-[#2e2e3a] rounded-2xl p-6">
-        <h2 className="text-base font-semibold text-[#e8e8f0] mb-1">Connect Your Bot</h2>
-        <p className="text-sm text-[#9999b0] mb-5">
-          Paste your Discord bot token below. It will be stored securely in your database.
-        </p>
+    <div className="max-w-lg">
+      <div className="bg-bg-2 border border-border rounded-2xl p-6 shadow-card">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-accent-muted border border-accent/20 flex items-center justify-center">
+            <Link2 size={16} className="text-accent" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-text">Connect Your Bot</h2>
+            <p className="text-xs text-text-muted">Paste your Discord bot token to get started</p>
+          </div>
+        </div>
 
         <form onSubmit={handleConnect} className="space-y-4">
-          <input
-            type="password"
-            placeholder="Bot token"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-[#0e0e12] border border-[#2e2e3a] text-[#e8e8f0] placeholder-[#6b6b80] focus:outline-none focus:border-[#5865f2] transition-colors text-sm font-mono"
-          />
+          <div>
+            <label className="block text-xs font-medium text-text-dim mb-1.5">Bot Token</label>
+            <input
+              type="password"
+              placeholder="MTA...XXXXX.XXXXXX.XXXXXXXXXXX"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg bg-bg-1 border border-border text-text placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 text-sm font-mono transition-all"
+            />
+          </div>
 
           {error && (
-            <p className="text-sm text-[#ed4245]">{error}</p>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-danger/10 border border-danger/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0" />
+              <p className="text-sm text-danger">{error}</p>
+            </div>
           )}
 
           <button
             type="submit"
             disabled={loading || !token}
-            className="w-full py-3 rounded-xl bg-[#5865f2] hover:bg-[#4752c4] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm transition-colors"
+            className="w-full py-2.5 rounded-lg bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm transition-all shadow-glow-sm"
           >
             {loading ? 'Connecting...' : 'Connect Bot'}
           </button>
         </form>
 
-        <p className="text-xs text-[#6b6b80] mt-4">
-          You can find your bot token in the{' '}
-          <a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer" className="text-[#5865f2] hover:underline">
+        <p className="text-xs text-text-muted mt-4">
+          Find your token in the{' '}
+          <a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer" className="text-accent hover:underline">
             Discord Developer Portal
-          </a>
+          </a>{' '}
+          → Bot → Reset Token
         </p>
       </div>
     </div>
