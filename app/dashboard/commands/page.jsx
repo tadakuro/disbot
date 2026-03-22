@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Save, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Save, ChevronRight, Terminal } from 'lucide-react'
 
 const DEFAULT_CODE = `// Available: interaction, client
-// interaction.reply(), interaction.guild, interaction.user, etc.
+// Use editReply — deferReply is called automatically before this runs
 
 module.exports = async (interaction) => {
-  // Use editReply — deferReply is called automatically before your code runs
   await interaction.editReply({ content: 'Hello!' })
 }`
 
@@ -21,12 +20,24 @@ export default function CommandsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState(null)
 
   async function fetchCommands() {
-    const res = await fetch('/api/bot/commands')
-    const data = await res.json()
-    setCommands(Array.isArray(data) ? data : [])
-    setLoading(false)
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/bot/commands')
+      const data = await res.json()
+      // Normalize _id to string
+      const normalized = Array.isArray(data)
+        ? data.map(c => ({ ...c, _id: c._id?.toString() || c._id }))
+        : []
+      setCommands(normalized)
+    } catch (err) {
+      setError('Failed to load commands')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchCommands() }, [])
@@ -58,134 +69,163 @@ export default function CommandsPage() {
       code,
     }
 
-    if (selected?._id) {
-      await fetch('/api/bot/commands', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: selected._id, ...payload }),
-      })
-      setCommands((prev) => prev.map((c) => (c._id === selected._id ? { ...c, ...payload } : c)))
-      setSelected((prev) => ({ ...prev, ...payload }))
-    } else {
-      const res = await fetch('/api/bot/commands', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json()
-      const newCmd = { _id: data.id, ...payload }
-      setCommands((prev) => [...prev, newCmd])
-      setSelected(newCmd)
+    try {
+      if (selected?._id) {
+        await fetch('/api/bot/commands', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: selected._id, ...payload }),
+        })
+        const updated = { ...selected, ...payload }
+        setCommands((prev) => prev.map((c) => c._id === selected._id ? updated : c))
+        setSelected(updated)
+      } else {
+        const res = await fetch('/api/bot/commands', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        const newCmd = { _id: data.id?.toString(), ...payload }
+        setCommands((prev) => [...prev, newCmd])
+        setSelected(newCmd)
+      }
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      // silent
+    } finally {
+      setSaving(false)
     }
-
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
   }
 
   async function handleDelete() {
     if (!selected?._id) return
     setDeleting(true)
-    await fetch('/api/bot/commands', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: selected._id }),
-    })
-    setCommands((prev) => prev.filter((c) => c._id !== selected._id))
-    setSelected(null)
-    setCode(DEFAULT_CODE)
-    setCommandName('')
-    setDescription('')
-    setDeleting(false)
+    try {
+      await fetch('/api/bot/commands', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selected._id }),
+      })
+      setCommands((prev) => prev.filter((c) => c._id !== selected._id))
+      setSelected(null)
+      setCode(DEFAULT_CODE)
+      setCommandName('')
+      setDescription('')
+    } finally {
+      setDeleting(false)
+    }
   }
 
+  const showEditor = selected !== null || commandName !== ''
+
   return (
-    <div className="flex h-[calc(100vh-4rem)] -m-8">
-      <div className="w-60 bg-[#16161c] border-r border-[#2e2e3a] flex flex-col flex-shrink-0">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#2e2e3a]">
-          <p className="text-xs font-medium text-[#e8e8f0]">Commands</p>
+    <div className="flex h-[calc(100vh-4rem)] -m-8 animate-fadeIn">
+      {/* Sidebar */}
+      <div className="w-60 bg-bg-1 border-r border-border flex flex-col flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Terminal size={13} className="text-text-muted" />
+            <p className="text-xs font-semibold text-text">Commands</p>
+          </div>
           <button
             onClick={newCommand}
-            className="w-6 h-6 rounded-md bg-[#5865f220] text-[#5865f2] hover:bg-[#5865f240] flex items-center justify-center transition-colors"
+            className="w-6 h-6 rounded-md bg-accent-muted text-accent hover:bg-accent/20 border border-accent/20 flex items-center justify-center transition-all"
           >
-            <Plus size={14} />
+            <Plus size={13} />
           </button>
         </div>
+
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {loading ? (
             <div className="flex justify-center py-8">
-              <div className="w-4 h-4 border-2 border-[#5865f2] border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             </div>
+          ) : error ? (
+            <p className="text-xs text-danger text-center py-6 px-2">{error}</p>
           ) : commands.length === 0 ? (
-            <p className="text-xs text-[#6b6b80] text-center py-6 px-2">No commands yet. Click + to create one.</p>
+            <div className="text-center py-8 px-3">
+              <p className="text-xs text-text-muted mb-2">No commands yet.</p>
+              <button
+                onClick={newCommand}
+                className="text-xs text-accent hover:underline"
+              >
+                Create your first command
+              </button>
+            </div>
           ) : (
             commands.map((cmd) => (
               <button
                 key={cmd._id}
                 onClick={() => selectCommand(cmd)}
-                className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
                   selected?._id === cmd._id
-                    ? 'bg-[#5865f2] text-white'
-                    : 'text-[#9999b0] hover:text-[#e8e8f0] hover:bg-[#1e1e26]'
+                    ? 'bg-accent-muted text-accent border border-accent/20'
+                    : 'text-text-muted hover:text-text hover:bg-bg-3'
                 }`}
               >
                 <span className="text-xs font-mono flex-1 truncate">/{cmd.name}</span>
-                <ChevronRight size={12} className="flex-shrink-0 opacity-50" />
+                <ChevronRight size={11} className="flex-shrink-0 opacity-40" />
               </button>
             ))
           )}
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-[#0e0e12]">
-        {selected !== null || commandName !== '' ? (
+      {/* Editor */}
+      <div className="flex-1 flex flex-col bg-[#080b0f]">
+        {showEditor ? (
           <>
-            <div className="flex items-center gap-3 px-5 py-3 border-b border-[#2e2e3a] bg-[#16161c]">
-              <div className="flex items-center gap-2 flex-1">
-                <span className="text-[#6b6b80] text-sm font-mono">/</span>
+            {/* Toolbar */}
+            <div className="flex items-center gap-3 px-5 py-3 border-b border-border bg-bg-1">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="text-text-muted text-sm font-mono flex-shrink-0">/</span>
                 <input
                   type="text"
                   placeholder="command-name"
                   value={commandName}
-                  onChange={(e) => setCommandName(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                  className="bg-transparent text-sm font-mono text-[#e8e8f0] placeholder-[#6b6b80] focus:outline-none w-40"
+                  onChange={(e) => setCommandName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  className="bg-transparent text-sm font-mono text-text placeholder-text-muted focus:outline-none w-36"
                 />
-                <span className="text-[#2e2e3a]">|</span>
+                <span className="text-border flex-shrink-0">|</span>
                 <input
                   type="text"
-                  placeholder="Description"
+                  placeholder="Short description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="bg-transparent text-sm text-[#9999b0] placeholder-[#6b6b80] focus:outline-none flex-1"
+                  className="bg-transparent text-sm text-text-muted placeholder-text-muted focus:outline-none flex-1 min-w-0"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                {saved && <span className="text-xs text-[#3ba55d]">Saved!</span>}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {saved && <span className="text-xs text-success">Saved!</span>}
                 {selected?._id && (
                   <button
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="p-1.5 rounded-lg text-[#6b6b80] hover:text-[#ed4245] hover:bg-[#ed424520] transition-colors disabled:opacity-50"
+                    className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-all disabled:opacity-50"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={13} />
                   </button>
                 )}
                 <button
                   onClick={handleSave}
                   disabled={saving || !commandName.trim()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#5865f2] hover:bg-[#4752c4] disabled:opacity-50 text-white text-xs font-medium transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-accent hover:bg-accent-hover disabled:opacity-50 text-white transition-all shadow-glow-sm"
                 >
                   <Save size={12} />
                   {saving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
+
+            {/* Code area */}
             <div className="flex-1 relative">
               <textarea
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 spellCheck={false}
-                className="absolute inset-0 w-full h-full bg-transparent text-[#e8e8f0] font-mono text-sm p-5 focus:outline-none resize-none leading-relaxed"
+                className="absolute inset-0 w-full h-full bg-transparent text-[#e2e8f0] font-mono text-sm p-5 focus:outline-none resize-none leading-relaxed"
                 style={{ tabSize: 2 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Tab') {
@@ -199,16 +239,25 @@ export default function CommandsPage() {
                 }}
               />
             </div>
-            <div className="px-5 py-2 border-t border-[#2e2e3a] bg-[#16161c]">
-              <p className="text-xs text-[#6b6b80]">After saving, restart the bot from the dashboard to register the new command.</p>
+
+            {/* Footer */}
+            <div className="px-5 py-2 border-t border-border bg-bg-1 flex items-center justify-between">
+              <p className="text-xs text-text-muted">Use <code className="font-mono text-accent">interaction.editReply()</code> — deferReply is called automatically</p>
+              <p className="text-xs text-text-muted">After saving, restart the bot to register the command</p>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3">
-            <p className="text-sm text-[#6b6b80]">Select a command or create a new one</p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-accent-muted border border-accent/20 flex items-center justify-center">
+              <Terminal size={20} className="text-accent" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-text">No command selected</p>
+              <p className="text-xs text-text-muted mt-1">Pick one from the list or create a new one</p>
+            </div>
             <button
               onClick={newCommand}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#5865f2] hover:bg-[#4752c4] text-white text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-sm font-medium transition-all shadow-glow-sm"
             >
               <Plus size={14} />
               New Command
