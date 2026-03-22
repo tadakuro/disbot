@@ -4,14 +4,9 @@ import { getDb } from '@/lib/mongodb'
 
 const RAILWAY_API = 'https://backboard.railway.app/graphql/v2'
 
-async function railwayRequest(query, variables = {}) {
+async function railwayQuery(query, variables = {}) {
   const token = process.env.RAILWAY_API_TOKEN
-  const serviceId = process.env.RAILWAY_SERVICE_ID
-  const environmentId = process.env.RAILWAY_ENVIRONMENT_ID
-
-  if (!token || !serviceId) {
-    throw new Error('RAILWAY_API_TOKEN or RAILWAY_SERVICE_ID not configured')
-  }
+  if (!token) throw new Error('RAILWAY_API_TOKEN not configured')
 
   const res = await fetch(RAILWAY_API, {
     method: 'POST',
@@ -19,7 +14,7 @@ async function railwayRequest(query, variables = {}) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ query, variables: { serviceId, environmentId, ...variables } }),
+    body: JSON.stringify({ query, variables }),
   })
 
   const data = await res.json()
@@ -27,33 +22,52 @@ async function railwayRequest(query, variables = {}) {
   return data
 }
 
+async function getLatestDeploymentId() {
+  const projectId = process.env.RAILWAY_PROJECT_ID
+  const environmentId = process.env.RAILWAY_ENVIRONMENT_ID
+  const serviceId = process.env.RAILWAY_SERVICE_ID
+
+  if (!projectId || !environmentId || !serviceId) {
+    throw new Error('RAILWAY_PROJECT_ID, RAILWAY_ENVIRONMENT_ID, or RAILWAY_SERVICE_ID not configured')
+  }
+
+  const data = await railwayQuery(`
+    query deployments($projectId: String!, $environmentId: String!, $serviceId: String!) {
+      deployments(
+        first: 1
+        input: { projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId }
+      ) {
+        edges { node { id status } }
+      }
+    }
+  `, { projectId, environmentId, serviceId })
+
+  const deployment = data?.data?.deployments?.edges?.[0]?.node
+  if (!deployment) throw new Error('No deployment found')
+  return deployment
+}
+
 export async function POST(request) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { action } = await request.json()
-  if (!['start', 'stop', 'restart'].includes(action)) {
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+  if (!['restart', 'stop'].includes(action)) {
+    return NextResponse.json({ error: 'Invalid action. Use restart or stop.' }, { status: 400 })
   }
 
   try {
+    const deployment = await getLatestDeploymentId()
+
     if (action === 'restart') {
-      await railwayRequest(
-        `mutation ServiceInstanceRedeploy($serviceId: String!, $environmentId: String) {
-          serviceInstanceRedeploy(serviceId: $serviceId, environmentId: $environmentId)
-        }`
-      )
-    } else if (action === 'start') {
-      await railwayRequest(
-        `mutation ServiceInstanceDeploy($serviceId: String!, $environmentId: String) {
-          serviceInstanceDeploy(serviceId: $serviceId, environmentId: $environmentId) { id }
-        }`
+      await railwayQuery(
+        `mutation deploymentRestart($id: String!) { deploymentRestart(id: $id) }`,
+        { id: deployment.id }
       )
     } else if (action === 'stop') {
-      await railwayRequest(
-        `mutation ServiceInstanceStop($serviceId: String!, $environmentId: String) {
-          serviceInstanceStop(serviceId: $serviceId, environmentId: $environmentId)
-        }`
+      await railwayQuery(
+        `mutation deploymentStop($id: String!) { deploymentStop(id: $id) }`,
+        { id: deployment.id }
       )
     }
 
@@ -75,17 +89,12 @@ export async function GET() {
       return NextResponse.json({ status: 'NO_TOKEN', online: false })
     }
 
-    // Check if bot is online by hitting Discord API with the token
     const res = await fetch('https://discord.com/api/v10/users/@me', {
       headers: { Authorization: `Bot ${config.token}` },
     })
 
-    if (res.ok) {
-      return NextResponse.json({ status: 'ONLINE', online: true })
-    } else {
-      return NextResponse.json({ status: 'OFFLINE', online: false })
-    }
+    return NextResponse.json({ status: res.ok ? 'ONLINE' : 'OFFLINE', online: res.ok })
   } catch (err) {
-    return NextResponse.json({ status: 'OFFLINE', online: false, error: err.message })
+    return NextResponse.json({ status: 'OFFLINE', online: false })
   }
 }
