@@ -2,17 +2,17 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { RotateCw, Square, Power, AlertCircle } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 
 export default function BotOverviewCard({ bot }) {
   const [status, setStatus] = useState(null)
-  const [actionLoading, setActionLoading] = useState(null)
-  const [actionError, setActionError] = useState(null)
-  const [actionSuccess, setActionSuccess] = useState(null)
 
   const avatarUrl = bot?.avatar
     ? `https://cdn.discordapp.com/avatars/${bot.id}/${bot.avatar}.png`
     : null
+
+  const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_SERVICE_URL ||
+    `https://railway.com/project/${process.env.NEXT_PUBLIC_RAILWAY_PROJECT_ID}`
 
   async function fetchStatus() {
     try {
@@ -21,31 +21,6 @@ export default function BotOverviewCard({ bot }) {
       setStatus(data)
     } catch {
       setStatus({ online: false })
-    }
-  }
-
-  async function handleAction(action) {
-    setActionLoading(action)
-    setActionError(null)
-    setActionSuccess(null)
-    try {
-      const res = await fetch('/api/bot/control', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      })
-      const data = await res.json()
-      if (!res.ok || data.error) {
-        setActionError(data.error || 'Action failed')
-      } else {
-        setActionSuccess(`${action.charAt(0).toUpperCase() + action.slice(1)} triggered`)
-        setTimeout(() => setActionSuccess(null), 3000)
-        setTimeout(fetchStatus, 4000)
-      }
-    } catch (err) {
-      setActionError('Network error — try again')
-    } finally {
-      setActionLoading(null)
     }
   }
 
@@ -84,40 +59,15 @@ export default function BotOverviewCard({ bot }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        {[
-          { action: 'restart', label: 'Restart', icon: RotateCw, color: 'accent' },
-          { action: 'stop', label: 'Stop', icon: Square, color: 'danger' },
-          { action: 'start', label: 'Start', icon: Power, color: 'success' },
-        ].map(({ action, label, icon: Icon, color }) => (
-          <button
-            key={action}
-            onClick={() => handleAction(action)}
-            disabled={actionLoading !== null}
-            className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all disabled:opacity-50 ${
-              color === 'success' ? 'bg-success/10 text-success hover:bg-success/20 border border-success/20' :
-              color === 'danger' ? 'bg-danger/10 text-danger hover:bg-danger/20 border border-danger/20' :
-              'bg-accent-muted text-accent hover:bg-accent/20 border border-accent/20'
-            }`}
-          >
-            <Icon size={12} className={actionLoading === action ? 'animate-spin' : ''} />
-            {actionLoading === action ? '...' : label}
-          </button>
-        ))}
-      </div>
-
-      {actionError && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-danger/10 border border-danger/20">
-          <AlertCircle size={13} className="text-danger flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-danger">{actionError}</p>
-        </div>
-      )}
-
-      {actionSuccess && (
-        <div className="px-3 py-2 rounded-lg bg-success/10 border border-success/20">
-          <p className="text-xs text-success">✓ {actionSuccess} — status will update shortly</p>
-        </div>
-      )}
+      <a
+        href={`https://railway.com/project/${process.env.NEXT_PUBLIC_RAILWAY_PROJECT_ID}`}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-bg-3 hover:bg-bg-4 border border-border text-text-muted hover:text-text text-xs font-medium transition-all"
+      >
+        <ExternalLink size={12} />
+        Manage on Railway
+      </a>
     </div>
   )
 }
