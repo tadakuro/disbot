@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { RotateCw, Square } from 'lucide-react'
+import { RotateCw, Square, Power } from 'lucide-react'
 
 export default function BotOverviewCard({ bot }) {
   const [status, setStatus] = useState(null)
@@ -67,10 +67,11 @@ export default function BotOverviewCard({ bot }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {[
           { action: 'restart', label: 'Restart', icon: RotateCw, color: 'accent' },
           { action: 'stop', label: 'Stop', icon: Square, color: 'danger' },
+          { action: 'start', label: 'Start', icon: Power, color: 'success' },
         ].map(({ action, label, icon: Icon, color }) => (
           <button
             key={action}
