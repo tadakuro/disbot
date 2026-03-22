@@ -1,3 +1,5 @@
+'use client'
+
 import ModulePanel from '@/components/modules/ModulePanel'
 
 export default function AutoModPage() {
