@@ -7,7 +7,9 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const db = await getDb()
   const commands = await db.collection('commands').find({}).toArray()
-  return NextResponse.json(commands)
+  // Serialize _id to string so it's safe to send as JSON
+  const serialized = commands.map(c => ({ ...c, _id: c._id.toString() }))
+  return NextResponse.json(serialized)
 }
 
 export async function POST(request) {
@@ -21,7 +23,7 @@ export async function POST(request) {
     createdAt: new Date(),
     updatedAt: new Date(),
   })
-  return NextResponse.json({ success: true, id: result.insertedId })
+  return NextResponse.json({ success: true, id: result.insertedId.toString() })
 }
 
 export async function PUT(request) {
