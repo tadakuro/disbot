@@ -7,7 +7,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const db = await getDb()
   const giveaways = await db.collection('giveaways').find({}).sort({ createdAt: -1 }).toArray()
-  return NextResponse.json(giveaways)
+  return NextResponse.json(giveaways.map(g => ({ ...g, _id: g._id.toString() })))
 }
 
 export async function POST(request) {
@@ -24,7 +24,7 @@ export async function POST(request) {
     entries: [],
     createdAt: new Date(),
   })
-  return NextResponse.json({ success: true, id: result.insertedId })
+  return NextResponse.json({ success: true, id: result.insertedId.toString() })
 }
 
 export async function PUT(request) {
