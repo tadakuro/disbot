@@ -18,7 +18,8 @@ async function railwayQuery(query, variables = {}) {
   })
 
   const data = await res.json()
-  if (data.errors) throw new Error(data.errors[0].message)
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${JSON.stringify(data)}`)
+  if (data.errors) throw new Error(`Railway error: ${JSON.stringify(data.errors)}`)
   return data
 }
 
