@@ -1,55 +1,76 @@
 'use client'
 
 import ModulePanel from '@/components/modules/ModulePanel'
+import { Card, CardHeader, Field, Input, Toggle, NumberInput } from '@/components/ui/Card'
+import { Shield } from 'lucide-react'
 
 export default function ModerationPage() {
   return (
     <ModulePanel
       title="Moderation"
-      description="Configure ban, kick, warn, timeout and purge settings."
+      description="Manage bans, kicks, warnings, timeouts and purge. Configure automated escalation and mod logging."
+      icon={Shield}
       apiPath="moderation"
     >
       {({ data, setData }) => (
-        <div className="space-y-4">
-          <div className="bg-[#16161c] border border-[#2e2e3a] rounded-2xl p-5 space-y-4">
-            <h2 className="text-sm font-medium text-[#e8e8f0]">Mod Log Channel</h2>
-            <input
-              type="text"
-              placeholder="Channel ID"
-              value={data.modLogChannel || ''}
-              onChange={(e) => setData({ ...data, modLogChannel: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl bg-[#0e0e12] border border-[#2e2e3a] text-[#e8e8f0] placeholder-[#6b6b80] focus:outline-none focus:border-[#5865f2] text-sm transition-colors"
-            />
-            <p className="text-xs text-[#6b6b80]">All moderation actions will be logged to this channel.</p>
-          </div>
-
-          <div className="bg-[#16161c] border border-[#2e2e3a] rounded-2xl p-5 space-y-4">
-            <h2 className="text-sm font-medium text-[#e8e8f0]">DM on Action</h2>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={data.dmOnAction || false}
-                onChange={(e) => setData({ ...data, dmOnAction: e.target.checked })}
-                className="w-4 h-4 accent-[#5865f2]"
+        <>
+          <Card>
+            <CardHeader title="Mod Log Channel" description="All moderation actions will be posted here." />
+            <Field label="Channel ID" hint="Right-click a channel in Discord → Copy Channel ID">
+              <Input
+                placeholder="e.g. 123456789012345678"
+                value={data.modLogChannel || ''}
+                onChange={(e) => setData({ ...data, modLogChannel: e.target.value })}
               />
-              <span className="text-sm text-[#9999b0]">Send a DM to the user when a mod action is taken</span>
-            </label>
-          </div>
+            </Field>
+          </Card>
 
-          <div className="bg-[#16161c] border border-[#2e2e3a] rounded-2xl p-5 space-y-4">
-            <h2 className="text-sm font-medium text-[#e8e8f0]">Max Warns Before Ban</h2>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              placeholder="e.g. 3"
-              value={data.maxWarns || ''}
-              onChange={(e) => setData({ ...data, maxWarns: parseInt(e.target.value) || '' })}
-              className="w-32 px-4 py-2.5 rounded-xl bg-[#0e0e12] border border-[#2e2e3a] text-[#e8e8f0] placeholder-[#6b6b80] focus:outline-none focus:border-[#5865f2] text-sm transition-colors"
+          <Card>
+            <CardHeader title="DM Notifications" description="Notify users when a mod action is taken against them." />
+            <Toggle
+              checked={data.dmOnAction || false}
+              onChange={(v) => setData({ ...data, dmOnAction: v })}
+              label="Send DM on Action"
+              description="User receives a DM explaining the action and reason"
             />
-            <p className="text-xs text-[#6b6b80]">Auto-ban a user after this many warnings. Leave empty to disable.</p>
-          </div>
-        </div>
+          </Card>
+
+          <Card>
+            <CardHeader title="Auto-Ban Threshold" description="Automatically ban a user after they reach a warning limit." />
+            <Field label="Max Warnings Before Auto-Ban" hint="Leave empty to disable auto-ban on warns">
+              <NumberInput
+                placeholder="e.g. 3"
+                min={1}
+                max={20}
+                value={data.maxWarns || ''}
+                onChange={(e) => setData({ ...data, maxWarns: parseInt(e.target.value) || '' })}
+                className="w-32"
+              />
+            </Field>
+          </Card>
+
+          <Card>
+            <CardHeader title="Mute Role" description="Role to assign when a user is muted via the bot." />
+            <Field label="Mute Role ID" hint="Create a role with no send message permission and paste its ID">
+              <Input
+                placeholder="e.g. 123456789012345678"
+                value={data.muteRoleId || ''}
+                onChange={(e) => setData({ ...data, muteRoleId: e.target.value })}
+              />
+            </Field>
+          </Card>
+
+          <Card>
+            <CardHeader title="Exempt Roles" description="Users with these roles cannot be moderated by the bot." />
+            <Field label="Exempt Role IDs" hint="Comma-separated role IDs">
+              <Input
+                placeholder="e.g. 111111111, 222222222"
+                value={data.exemptRoles || ''}
+                onChange={(e) => setData({ ...data, exemptRoles: e.target.value })}
+              />
+            </Field>
+          </Card>
+        </>
       )}
     </ModulePanel>
   )

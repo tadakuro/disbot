@@ -14,10 +14,11 @@ export async function POST(request) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const body = await request.json()
+  const { _id, ...cleanBody } = body
   const db = await getDb()
   await db.collection('modules').updateOne(
     { key: 'logging' },
-    { $set: { ...body, key: 'logging', updatedAt: new Date() } },
+    { $set: { ...cleanBody, key: 'logging', updatedAt: new Date() } },
     { upsert: true }
   )
   return NextResponse.json({ success: true })

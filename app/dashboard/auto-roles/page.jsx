@@ -1,17 +1,19 @@
 'use client'
 
+import { useState } from 'react'
 import ModulePanel from '@/components/modules/ModulePanel'
+import { Card, CardHeader, Field, Input, Select } from '@/components/ui/Card'
+import { UserPlus, Plus, Trash2 } from 'lucide-react'
 
 function AutoRolesList({ data, setData }) {
   const roles = data.roles || []
 
   function addRole() {
-    setData({ ...data, roles: [...roles, { roleId: '', type: 'all' }] })
+    setData({ ...data, roles: [...roles, { roleId: '', type: 'all', delay: 0 }] })
   }
 
   function updateRole(i, field, value) {
-    const updated = roles.map((r, idx) => idx === i ? { ...r, [field]: value } : r)
-    setData({ ...data, roles: updated })
+    setData({ ...data, roles: roles.map((r, idx) => idx === i ? { ...r, [field]: value } : r) })
   }
 
   function removeRole(i) {
@@ -19,43 +21,57 @@ function AutoRolesList({ data, setData }) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="bg-[#16161c] border border-[#2e2e3a] rounded-2xl p-5 space-y-3">
-        <h2 className="text-sm font-medium text-[#e8e8f0]">Auto-assigned Roles on Join</h2>
-        <p className="text-xs text-[#6b6b80]">These roles will be given to members automatically when they join.</p>
-      </div>
-
-      {roles.map((role, i) => (
-        <div key={i} className="bg-[#16161c] border border-[#2e2e3a] rounded-2xl p-5">
-          <div className="flex items-center gap-3">
-            <input
-              type="text"
-              placeholder="Role ID"
-              value={role.roleId}
-              onChange={(e) => updateRole(i, 'roleId', e.target.value)}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-[#0e0e12] border border-[#2e2e3a] text-[#e8e8f0] placeholder-[#6b6b80] focus:outline-none focus:border-[#5865f2] text-sm transition-colors"
-            />
-            <select
-              value={role.type}
-              onChange={(e) => updateRole(i, 'type', e.target.value)}
-              className="px-4 py-2.5 rounded-xl bg-[#0e0e12] border border-[#2e2e3a] text-[#e8e8f0] focus:outline-none focus:border-[#5865f2] text-sm transition-colors"
+    <Card>
+      <CardHeader title="Auto-assigned Roles" description="Roles assigned automatically when a member joins." />
+      <div className="space-y-3 mb-3">
+        {roles.length === 0 && (
+          <p className="text-sm text-text-muted text-center py-4">No auto roles configured. Add one below.</p>
+        )}
+        {roles.map((role, i) => (
+          <div key={i} className="flex items-end gap-3 p-3 bg-bg-1 rounded-lg border border-border">
+            <Field label="Role ID" className="flex-1">
+              <Input
+                placeholder="Role ID"
+                value={role.roleId}
+                onChange={(e) => updateRole(i, 'roleId', e.target.value)}
+              />
+            </Field>
+            <Field label="Assign To">
+              <Select
+                value={role.type}
+                onChange={(e) => updateRole(i, 'type', e.target.value)}
+              >
+                <option value="all">All members</option>
+                <option value="humans">Humans only</option>
+                <option value="bots">Bots only</option>
+              </Select>
+            </Field>
+            <Field label="Delay (sec)">
+              <Input
+                type="number"
+                placeholder="0"
+                value={role.delay || ''}
+                onChange={(e) => updateRole(i, 'delay', parseInt(e.target.value) || 0)}
+                className="w-20"
+              />
+            </Field>
+            <button
+              onClick={() => removeRole(i)}
+              className="mb-0.5 p-2 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-all"
             >
-              <option value="all">All members</option>
-              <option value="bots">Bots only</option>
-              <option value="humans">Humans only</option>
-            </select>
-            <button onClick={() => removeRole(i)} className="text-xs text-[#ed4245] hover:underline px-2">Remove</button>
+              <Trash2 size={14} />
+            </button>
           </div>
-        </div>
-      ))}
-
+        ))}
+      </div>
       <button
         onClick={addRole}
-        className="w-full py-3 rounded-xl border border-dashed border-[#2e2e3a] text-[#9999b0] hover:border-[#5865f2] hover:text-[#5865f2] text-sm transition-colors"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border-bright text-text-muted hover:text-accent hover:border-accent/40 text-sm transition-all w-full justify-center"
       >
-        + Add Role
+        <Plus size={14} />
+        Add Role
       </button>
-    </div>
+    </Card>
   )
 }
 
@@ -63,7 +79,8 @@ export default function AutoRolesPage() {
   return (
     <ModulePanel
       title="Auto Roles"
-      description="Automatically assign roles when a member joins the server."
+      description="Automatically assign roles when a member joins your server."
+      icon={UserPlus}
       apiPath="auto-roles"
     >
       {({ data, setData }) => <AutoRolesList data={data} setData={setData} />}

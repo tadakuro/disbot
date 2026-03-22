@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
+import { getDb } from '@/lib/mongodb'
 
 const RAILWAY_API = 'https://backboard.railway.app/graphql/v2'
 
@@ -67,18 +68,24 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const data = await railwayRequest(
-      `query ServiceInstance($serviceId: String!, $environmentId: String) {
-        serviceInstance(serviceId: $serviceId, environmentId: $environmentId) {
-          latestDeployment { status }
-        }
-      }`
-    )
+    const db = await getDb()
+    const config = await db.collection('config').findOne({ key: 'bot' })
 
-    const status = data?.data?.serviceInstance?.latestDeployment?.status || 'UNKNOWN'
-    const online = status === 'SUCCESS'
-    return NextResponse.json({ status, online })
+    if (!config?.token) {
+      return NextResponse.json({ status: 'NO_TOKEN', online: false })
+    }
+
+    // Check if bot is online by hitting Discord API with the token
+    const res = await fetch('https://discord.com/api/v10/users/@me', {
+      headers: { Authorization: `Bot ${config.token}` },
+    })
+
+    if (res.ok) {
+      return NextResponse.json({ status: 'ONLINE', online: true })
+    } else {
+      return NextResponse.json({ status: 'OFFLINE', online: false })
+    }
   } catch (err) {
-    return NextResponse.json({ status: 'UNKNOWN', online: false, error: err.message })
+    return NextResponse.json({ status: 'OFFLINE', online: false, error: err.message })
   }
 }
